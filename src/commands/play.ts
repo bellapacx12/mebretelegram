@@ -80,7 +80,7 @@ const playCommand = (bot: TelegramBot) => {
         // Ensure user exists
         const user = await ensureUser(
           telegramId,
-          query.from.username || query.from.first_name || "Anonymous"
+          query.from.username || query.from.first_name || "Anonymous",
         );
 
         // Balance check
@@ -90,7 +90,7 @@ const playCommand = (bot: TelegramBot) => {
             `❌ Insufficient balance!\n💰 Your balance: ${
               user?.balance ?? 0
             } ETB\n\nPlease deposit before playing.`,
-            { reply_markup: mainMenuKeyboard() }
+            { reply_markup: mainMenuKeyboard() },
           );
           return bot.answerCallbackQuery(query.id);
         }
@@ -104,7 +104,7 @@ const playCommand = (bot: TelegramBot) => {
                 {
                   text: "ጨወታ ጀምር",
                   web_app: {
-                    url: `https://yonifrontend.vercel.app/stake/${stake}?user=${telegramId}`,
+                    url: `https://mebrefrontend.vercel.app/stake/${stake}?user=${telegramId}`,
                   },
                 },
               ],
@@ -119,7 +119,7 @@ const playCommand = (bot: TelegramBot) => {
       console.error("[PLAY CALLBACK ERROR]", err);
       await bot.sendMessage(
         chatId,
-        "❌ Something went wrong while joining the lobby.\nPlease try again later."
+        "❌ Something went wrong while joining the lobby.\nPlease try again later.",
       );
       return bot.answerCallbackQuery(query.id);
     }

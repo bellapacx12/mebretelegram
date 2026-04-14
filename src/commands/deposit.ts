@@ -21,7 +21,7 @@ async function showPaymentDetails(
   bot: TelegramBot,
   chatId: number,
   session: any,
-  msg: Message
+  msg: Message,
 ) {
   let phone = "Not shared";
   try {
@@ -51,7 +51,7 @@ async function showPaymentDetails(
     `1. ከቴሌብር ወደ ኤጀንት ቴሌብር ብቻ
 2. ከንግድ ባንክ ወደ ኤጀንት ንግድ ባንክ ብቻ
 3. ከሲቢኢ ብር ወደ ኤጀንት ሲቢኢ ብር ብቻ
-4. ከአቢሲኒያ ባንክ ወደ ኤጀንት አቢሲኒያ ባንክ ብቻ`
+4. ከአቢሲኒያ ባንክ ወደ ኤጀንት አቢሲኒያ ባንክ ብቻ`,
   );
 
   const codeBlock = `\`\`\`
@@ -79,7 +79,7 @@ ${depositMethods}`;
 async function showTelebirrPayment(
   bot: TelegramBot,
   chatId: number,
-  session: any
+  session: any,
 ) {
   const account = "0967623621";
 
@@ -108,7 +108,7 @@ async function showTelebirrPayment(
   const footer = escapeMarkdownV2(
     `የሚያጋጥማቹ የክፍያ ችግር ካለ @yoni5357 በዚ ኤጀንቱን ማዋራት ይችላሉ በዚ ሳፖርት ማዉራት ይችላሉ
 
-የከፈለችሁበትን አጭር የጹሁፍ መለክት (sms) እዚ ላይ ያስገቡት 👇👇👇`
+የከፈለችሁበትን አጭር የጹሁፍ መለክት (sms) እዚ ላይ ያስገቡት 👇👇👇`,
   );
 
   // Final message combined
@@ -148,7 +148,7 @@ async function showCbeePayment(bot: TelegramBot, chatId: number, session: any) {
   const footer = escapeMarkdownV2(
     `የሚያጋጥማቹ የክፍያ ችግር ካለ @yoni5357 በዚ ኤጀንቱን ማዋራት ይችላሉ በዚ ሳፖርት ማዉራት ይችላሉ
 
-የከፈለችሁበትን አጭር የጹሁፍ መለክት (sms) እዚ ላይ ያስገቡት 👇👇👇`
+የከፈለችሁበትን አጭር የጹሁፍ መለክት (sms) እዚ ላይ ያስገቡት 👇👇👇`,
   );
 
   const finalMessage = `${accountBlock}\n${instructionsBlock}\n${footer}`;
@@ -196,7 +196,7 @@ async function showCbePayment(bot: TelegramBot, chatId: number, session: any) {
     "📜 መመሪያዎች:\n" + escapeMarkdownV2(instructions),
     {
       parse_mode: "MarkdownV2",
-    }
+    },
   );
 
   // -----------------------------
@@ -218,26 +218,44 @@ async function waitForVerification(
   bot: TelegramBot,
   chatId: number,
   text: string,
-  session: any
+  session: any,
 ) {
-  const maxAttempts = 5; // check 5 times
-  const interval = 5000; // every 5 seconds
+  const maxAttempts = 5;
+  const interval = 5000;
+
+  const useReceipt = isReceipt(text);
+  const receiptNo = useReceipt ? extractReceiptNo(text) : null;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     console.log(`[VERIFY] Attempt ${attempt}/${maxAttempts}`);
 
     try {
-      const response = await api.verifyDeposit({
-        userId: chatId,
-        sms: text,
-        expectedAmount: session.amount ?? 0,
-        reference: session.reference ?? "",
-      });
+      let response;
+
+      if (useReceipt && receiptNo) {
+        console.log("📄 Using Telebirr receipt verification");
+
+        response = await api.verifyTelebirrReceipt({
+          userId: chatId,
+          receiptNo,
+          expectedAmount: session.amount ?? 0,
+          expectedTo: "LIDIYA", // ⚠️ set this
+        });
+      } else {
+        console.log("📩 Using SMS verification");
+
+        response = await api.verifyDeposit({
+          userId: chatId,
+          sms: text,
+          expectedAmount: session.amount ?? 0,
+          reference: session.reference ?? "",
+        });
+      }
 
       if (response.success) {
         await bot.sendMessage(
           chatId,
-          `✅ ክፍያዎ ተረጋግጧል!\nመጠን: ${response.amount}`
+          `✅ ክፍያዎ ተረጋግጧል!\nመጠን: ${response.amount}`,
         );
         session.state = "deposit_verified";
         return true;
@@ -251,10 +269,8 @@ async function waitForVerification(
     }
   }
 
-  await bot.sendMessage(
-    chatId,
-    "❌ ክፍያ አልተረጋገጠም። እባክዎ ትክክለኛ የግብይት መልክት (SMS) ያስገቡ።"
-  );
+  await bot.sendMessage(chatId, "❌ ክፍያ አልተረጋገጠም። እባክዎ SMS ወይም receipt ያስገቡ።");
+
   return false;
 }
 
@@ -361,7 +377,7 @@ export function depositCommand(bot: TelegramBot) {
       // Send temporary loading message
       const verifyingMsg = await bot.sendMessage(
         chatId,
-        "⏳ እባክዎ ይጠብቁ... ክፍያዎ በመረጋገጥ ላይ ነው።"
+        "⏳ እባክዎ ይጠብቁ... ክፍያዎ በመረጋገጥ ላይ ነው።",
       );
 
       const success = await waitForVerification(bot, chatId, text, session);

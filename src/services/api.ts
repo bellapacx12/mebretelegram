@@ -1,5 +1,6 @@
 import axios from "axios";
 import WebSocket from "ws"; // Node WebSocket library
+import { loadReceipt, parseFromHTML, receipt } from "telebirr-receipt";
 
 const API_BASE =
   process.env.BACKEND_URL || "https://mebrebackend.onrender.com/api";
@@ -99,7 +100,73 @@ export const api = {
       return { success: false, message: err.message || "Unknown error" };
     }
   },
+  async verifyTelebirrReceipt(data: {
+    userId: number;
+    receiptNo: string;
+    expectedAmount: number;
+    expectedTo: string;
+  }) {
+    try {
+      // ⚠️ temporary fix (same as repo)
+      process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = "0";
 
+      // 1. Load receipt HTML
+      const html = await loadReceipt({
+        receiptNo: data.receiptNo,
+      });
+
+      // 2. Parse receipt
+      const parsed = parseFromHTML(html);
+
+      console.log("📄 Parsed receipt:", parsed);
+
+      // 3. Verify fields
+      const { verify, equals } = receipt(parsed, {
+        amount: data.expectedAmount,
+        to: data.expectedTo,
+      });
+
+      const isValid = verify((parsed, expected) => {
+        return (
+          equals(parsed.amount, expected.amount) &&
+          equals(parsed.to, expected.to)
+        );
+      });
+
+      if (!isValid) {
+        return {
+          success: false,
+          message: "Receipt verification failed",
+        };
+      }
+
+      console.log("✅ Receipt verification passed");
+
+      // 4. Update backend
+      const updateRes = await axios.post(
+        `${API_BASE}/deposit/verify`,
+        {
+          userId: data.userId,
+          expectedAmount: data.expectedAmount,
+          reference: data.receiptNo,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      return {
+        success: true,
+        amount: data.expectedAmount,
+        data: updateRes.data,
+      };
+    } catch (err: any) {
+      console.error("❌ verifyTelebirrReceipt error:", err.message);
+      return { success: false, message: err.message || "Unknown error" };
+    }
+  },
   deposit: async (data: any) => axios.post(`${API_BASE}/deposit`, data),
   withdraw: async (data: any) => axios.post(`${API_BASE}/withdraw`, data),
   buyTicket: async (data: any) => axios.post(`${API_BASE}/tickets`, data),
