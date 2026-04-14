@@ -12,6 +12,7 @@
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
+    "@types/estree": "^1.0.8",
     "@types/express": "^5.0.3",
     "@types/node": "^24.3.1",
     "@types/node-telegram-bot-api": "^0.64.11",

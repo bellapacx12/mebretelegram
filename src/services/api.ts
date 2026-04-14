@@ -107,29 +107,42 @@ export const api = {
     expectedTo: string;
   }) {
     try {
-      const telebirr = require("telebirr-receipt");
-
-      process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = "0";
+      // ✅ use YOUR utils (not the package)
+      const { loadReceipt, parseFromHTML } = await import("../utils/telebirr");
 
       // 1. Load receipt
-      const html = await telebirr.utils.loadReceipt({
+      const html = await loadReceipt({
         receiptNo: data.receiptNo,
       });
 
       // 2. Parse
-      const parsed = telebirr.utils.parseFromHTML(html);
+      const parsed = parseFromHTML(html);
 
       console.log("📄 Parsed receipt:", parsed);
 
-      // 3. Validate (robust version)
-      const isValid =
-        Number(parsed.settled_amount) === data.expectedAmount &&
-        parsed.to?.toLowerCase().includes(data.expectedTo.toLowerCase());
-
-      if (!isValid) {
+      // 3. Validate (NO amount check)
+      if (!parsed || Object.keys(parsed).length === 0) {
         return {
           success: false,
-          message: "Receipt verification failed",
+          message: "Invalid receipt data",
+        };
+      }
+
+      if (parsed.transaction_status !== "Completed") {
+        return {
+          success: false,
+          message: "Transaction not completed",
+        };
+      }
+
+      if (
+        !parsed.credited_party_name
+          ?.toLowerCase()
+          .includes(data.expectedTo.toLowerCase())
+      ) {
+        return {
+          success: false,
+          message: "Receiver mismatch",
         };
       }
 
@@ -138,18 +151,21 @@ export const api = {
       // 4. Update backend
       const updateRes = await axios.post(`${API_BASE}/deposit/verify`, {
         userId: data.userId,
-        expectedAmount: data.expectedAmount,
+        expectedAmount: parsed.settled_amount, // 👈 use real amount
         reference: data.receiptNo,
       });
 
       return {
         success: true,
-        amount: data.expectedAmount,
+        amount: parsed.settled_amount, // 👈 real amount
         data: updateRes.data,
       };
     } catch (err: any) {
       console.error("❌ verifyTelebirrReceipt error:", err.message);
-      return { success: false, message: err.message || "Unknown error" };
+      return {
+        success: false,
+        message: err.message || "Unknown error",
+      };
     }
   },
   deposit: async (data: any) => axios.post(`${API_BASE}/deposit`, data),
