@@ -107,31 +107,24 @@ export const api = {
     expectedTo: string;
   }) {
     try {
-      // ⚠️ temporary fix (same as repo)
+      const telebirr = require("telebirr-receipt");
+
       process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = "0";
 
-      // 1. Load receipt HTML
-      const html = await telebirr.loadReceipt({
+      // 1. Load receipt
+      const html = await telebirr.utils.loadReceipt({
         receiptNo: data.receiptNo,
       });
 
-      // 2. Parse receipt
-      const parsed = telebirr.parseFromHTML(html);
+      // 2. Parse
+      const parsed = telebirr.utils.parseFromHTML(html);
 
       console.log("📄 Parsed receipt:", parsed);
 
-      // 3. Verify fields
-      const { verify, equals } = telebirr.receipt(parsed, {
-        amount: data.expectedAmount,
-        to: data.expectedTo,
-      });
-
-      const isValid = verify((parsed: any, expected: any) => {
-        return (
-          Number(parsed.amount) === expected.amount &&
-          parsed.to?.toLowerCase().includes(expected.to.toLowerCase())
-        );
-      });
+      // 3. Validate (robust version)
+      const isValid =
+        Number(parsed.settled_amount) === data.expectedAmount &&
+        parsed.to?.toLowerCase().includes(data.expectedTo.toLowerCase());
 
       if (!isValid) {
         return {
@@ -143,19 +136,11 @@ export const api = {
       console.log("✅ Receipt verification passed");
 
       // 4. Update backend
-      const updateRes = await axios.post(
-        `${API_BASE}/deposit/verify`,
-        {
-          userId: data.userId,
-          expectedAmount: data.expectedAmount,
-          reference: data.receiptNo,
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        },
-      );
+      const updateRes = await axios.post(`${API_BASE}/deposit/verify`, {
+        userId: data.userId,
+        expectedAmount: data.expectedAmount,
+        reference: data.receiptNo,
+      });
 
       return {
         success: true,
