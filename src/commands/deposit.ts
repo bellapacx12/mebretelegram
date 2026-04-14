@@ -213,7 +213,19 @@ async function showCbePayment(bot: TelegramBot, chatId: number, session: any) {
 
   session.state = "awaiting_sms";
 }
-
+function isReceipt(input: string) {
+  return (
+    input.includes("ethiotelecom.et/receipt") ||
+    /^[A-Z]{2,}\d{6,}$/.test(input.trim())
+  );
+}
+function extractReceiptNo(input: string): string | null {
+  if (input.includes("/receipt/")) {
+    const parts = input.split("/receipt/");
+    return parts[1]?.trim() || null;
+  }
+  return input.trim();
+}
 async function waitForVerification(
   bot: TelegramBot,
   chatId: number,
