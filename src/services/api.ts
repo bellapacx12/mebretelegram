@@ -1,6 +1,6 @@
 import axios from "axios";
 import WebSocket from "ws"; // Node WebSocket library
-import { loadReceipt, parseFromHTML, receipt } from "telebirr-receipt";
+const telebirr = require("telebirr-receipt");
 
 const API_BASE =
   process.env.BACKEND_URL || "https://mebrebackend.onrender.com/api";
@@ -111,25 +111,25 @@ export const api = {
       process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = "0";
 
       // 1. Load receipt HTML
-      const html = await loadReceipt({
+      const html = await telebirr.loadReceipt({
         receiptNo: data.receiptNo,
       });
 
       // 2. Parse receipt
-      const parsed = parseFromHTML(html);
+      const parsed = telebirr.parseFromHTML(html);
 
       console.log("📄 Parsed receipt:", parsed);
 
       // 3. Verify fields
-      const { verify, equals } = receipt(parsed, {
+      const { verify, equals } = telebirr.receipt(parsed, {
         amount: data.expectedAmount,
         to: data.expectedTo,
       });
 
-      const isValid = verify((parsed, expected) => {
+      const isValid = verify((parsed: any, expected: any) => {
         return (
-          equals(parsed.amount, expected.amount) &&
-          equals(parsed.to, expected.to)
+          Number(parsed.amount) === expected.amount &&
+          parsed.to?.toLowerCase().includes(expected.to.toLowerCase())
         );
       });
 
