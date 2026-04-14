@@ -2,8 +2,8 @@ import axios from "axios";
 import WebSocket from "ws"; // Node WebSocket library
 
 const API_BASE =
-  process.env.BACKEND_URL || "https://yonibackend.onrender.com/api";
-const WS_BASE = process.env.BACKEND_WS || "wss://yonibackend.onrender.com/ws";
+  process.env.BACKEND_URL || "https://mebrebackend.onrender.com/api";
+const WS_BASE = process.env.BACKEND_WS || "wss://mebrebackend.onrender.com/ws";
 const verify_BASE =
   process.env.VERIFY_URL ||
   "https://smsverifierapi.onrender.com/api/verify-deposit";
@@ -61,7 +61,7 @@ export const api = {
           headers: {
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       if (verifyRes.data.status !== "success") {
@@ -86,7 +86,7 @@ export const api = {
           headers: {
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       return {
@@ -113,13 +113,13 @@ export const api = {
 
     ws.on("open", () => {
       console.log(
-        `[WS] Connected to lobby for stake ${stake}, user ${telegramId}`
+        `[WS] Connected to lobby for stake ${stake}, user ${telegramId}`,
       );
     });
 
     ws.on("message", (msg: { toString: () => any }) => {
       console.log(
-        `[WS] Lobby message for user ${telegramId}: ${msg.toString()}`
+        `[WS] Lobby message for user ${telegramId}: ${msg.toString()}`,
       );
     });
 
